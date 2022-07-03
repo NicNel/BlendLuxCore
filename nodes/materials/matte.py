@@ -35,22 +35,5 @@ class LuxCoreNodeMatMatte(bpy.types.Node, LuxCoreNodeMaterial):
         if mat_type == "roughmatte":
             definitions["sigma"] = sigma
             
-        #color space
-        if not self.inputs["Diffuse Color"].is_linked:
-            color = self.inputs["Diffuse Color"].export(exporter, depsgraph, props)
-            colorspace = bpy.context.scene.luxcore.config.colorspace
-            if colorspace == "opencolorio":
-                ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
-                colorspace_name = bpy.context.scene.luxcore.config.colorspace_default_name
-                definitions.update({
-                    "kd": [colorspace, ocio_path, colorspace_name, *color],
-                })
-            elif colorspace == "luxcore":
-                colorspace_gamma = bpy.context.scene.luxcore.config.colorspace_gamma
-                definitions.update({
-                    "kd": [colorspace, colorspace_gamma, *color],
-                })
-        #------------------
-        
         self.export_common_inputs(exporter, depsgraph, props, definitions)
         return self.create_props(props, definitions, luxcore_name)
