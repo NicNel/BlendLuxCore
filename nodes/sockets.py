@@ -6,6 +6,7 @@ from ..utils import matrix_to_list
 from ..utils.errorlog import LuxCoreErrorLog
 from ..ui import icons
 
+from .. import utils
 # The rules for socket classes are these:
 # - If it is a socket that's used by more than one node, put it in this file
 # - If it is only used by one node, put it in the file of that node
@@ -164,7 +165,18 @@ class LuxCoreSocketColor(bpy.types.NodeSocket, LuxCoreNodeSocket):
         split.prop(self, "default_value", text="")
 
     def export_default(self):
-        return list(self.default_value)
+        color = list(self.default_value)
+        #color space
+        colorspace = bpy.context.scene.luxcore.config.colorspace
+        if colorspace == "opencolorio":
+            ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
+            colorspace_name = bpy.context.scene.luxcore.config.colorspace_default_name
+            return [colorspace, ocio_path, colorspace_name, *color]
+        elif colorspace == "luxcore":
+            colorspace_gamma = bpy.context.scene.luxcore.config.colorspace_gamma
+            return [colorspace, colorspace_gamma, *color]
+        #------------------
+        return color
 
 
 # Base class for float sockets (can't be used directly)
