@@ -428,7 +428,9 @@ def get_abspath(path, library=None, must_exist=False, must_be_existing_file=Fals
 
 def absorption_at_depth_scaled(abs_col, depth, scale=1):
     assert depth > 0
-    abs_col = list(abs_col)
+    #print("abs_col",abs_col)
+    abs_col = list(abs_col)[-3:]
+    #print(abs_col)
     assert len(abs_col) == 3
 
     scaled = [0, 0, 0]
