@@ -72,6 +72,13 @@ def convert(exporter, scene, context=None, engine=None):
             "scene.epsilon.max": config.max_epsilon,
             "path.albedospecular.type": scene.luxcore.denoiser.albedo_specular_passthrough_mode,
             "path.albedospecular.glossinessthreshold": 0.05,
+            #test COLORIO conversation
+            #"film.imagepipelines.0.0.type": "TONEMAP_OPENCOLORIO",
+            #"film.imagepipelines.0.0.mode": "COLORSPACE_CONVERSION",
+            #"film.imagepipelines.0.0.config": "F:/Spectral/blender-3.2.0-windows-x64/3.2/datafiles/colormanagement_ACES1_2/config.ocio",
+            #"film.imagepipelines.0.0.src": "aces",
+            #"film.imagepipelines.0.0.display": "sRGB",
+            #"film.imagepipelines.0.0.view": "Film",
         })
 
         if preferences.film_device not in {"", "none"}:
