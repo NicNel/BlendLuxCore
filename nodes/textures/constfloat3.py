@@ -6,6 +6,7 @@ from mathutils import Color
 from ...ui import icons
 from ...utils import node as utils_node
 
+from ... import utils
 
 def channel_linear_to_srgb(channel):
     if channel < 0.0031308:
@@ -68,6 +69,8 @@ class LuxCoreNodeTexConstfloat3(bpy.types.Node, LuxCoreNodeTexture):
         ("HSV", "HSV", "", 1),
     ]
     input_mode: EnumProperty(name="Input Mode", items=input_mode_items, default="RGB")
+    
+    colorspace_name: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, description="colorspace")
 
     def init(self, context):
         self.outputs.new("LuxCoreSocketColor", "Color")
@@ -97,11 +100,29 @@ class LuxCoreNodeTexConstfloat3(bpy.types.Node, LuxCoreNodeTexture):
                 subcol.prop(self, "value_hsv", index=2, text="V")
 
         layout.prop(self, "value")
+        layout.prop(self, "colorspace_name", text="Colorspace")
 
     def sub_export(self, exporter, depsgraph, props, luxcore_name=None, output_socket=None):
         definitions = {
             "type": "constfloat3",
             "value": list(self.value),
         }
+        
+        #color space
+        colorspace = bpy.context.scene.luxcore.config.colorspace
+        if colorspace == "opencolorio":
+            ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
+            definitions.update({
+                "colorspace": colorspace,
+                "colorspace.config": ocio_path,
+                "colorspace.name": self.colorspace_name,
+            })
+        elif colorspace == "luxcore":
+            colorspace_gamma = bpy.context.scene.luxcore.config.colorspace_gamma
+            definitions.update({
+                "colorspace": colorspace,
+                "colorspace.gamma": colorspace_gamma,
+            })
+        #------------------
 
         return self.create_props(props, definitions, luxcore_name)
