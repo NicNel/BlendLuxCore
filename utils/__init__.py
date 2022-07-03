@@ -12,6 +12,28 @@ MESH_OBJECTS = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
 EXPORTABLE_OBJECTS = MESH_OBJECTS | {"LIGHT"}
 NON_DEFORMING_MODIFIERS = {"COLLISION", "PARTICLE_INSTANCE", "PARTICLE_SYSTEM", "SMOKE"}
 
+COLORSPACE_NAMES = []#store readed ocio profiles names
+#generate dinamic list for enum property
+#https://blenderartists.org/t/add-remove-enumproperty-items/1305166/8
+def colorspace_items_generator(self,context):
+    enum_items = []
+    for name in COLORSPACE_NAMES:
+        enum_items.append((name, name, name))
+    return enum_items
+#read names from config.ocio
+def getCsNamesFromConf(ocio_file):
+    lut_names = []
+    try:
+        f = open(ocio_file, mode='r')
+        for line in f:
+            if "name:" in line:
+                x = re.findall("\sname:", line)
+                if not x==[]:
+                    name = line.split(":")[1].strip()
+                    lut_names.append(name)
+    finally:
+        f.close()
+    return lut_names
 
 def sanitize_luxcore_name(string):
     """
@@ -368,12 +390,8 @@ def is_obj_visible(obj):
 
 
 def is_obj_visible_in_cycles(obj):
-    if bpy.app.version[:2] < (3, 0):
-        c_vis = obj.cycles_visibility
-        return any((c_vis.camera, c_vis.diffuse, c_vis.glossy, c_vis.transmission, c_vis.scatter, c_vis.shadow))
-    else:
-        return any((obj.visible_camera, obj.visible_diffuse, obj.visible_glossy, obj.visible_transmission, obj.visible_volume_scatter, obj.visible_shadow))
-
+    c_vis = obj.cycles_visibility
+    return any((c_vis.camera, c_vis.diffuse, c_vis.glossy, c_vis.transmission, c_vis.scatter, c_vis.shadow))
 
 
 def visible_to_camera(dg_obj_instance, is_viewport_render, view_layer=None):

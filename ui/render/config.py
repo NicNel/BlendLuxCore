@@ -39,6 +39,17 @@ def luxcore_render_draw(panel, context):
     row = layout.row()
     row.operator("luxcore.use_cycles_settings")
     row.operator("luxcore.render_settings_helper")
+    
+    # Colorspace
+    col = layout.column(align=True)
+    col.label(text="Color management")
+    col.prop(config, "colorspace")
+    if config.colorspace == "opencolorio":
+        #use direct access to config file for now
+        col.prop(config, "ocio_conf_path")
+        col.prop(config, "colorspace_default_name")
+    elif config.colorspace == "luxcore":
+        col.prop(config, "colorspace_gamma")
 
 
 class LUXCORE_RENDER_PT_lightpaths(RenderButtonsPanel, Panel):

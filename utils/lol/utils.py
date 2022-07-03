@@ -30,7 +30,7 @@
 
 import bpy
 import uuid
-from os.path import basename, dirname, join, isfile, splitext, exists, getsize
+from os.path import basename, dirname, join, isfile, splitext
 import hashlib
 import tempfile
 import os
@@ -40,7 +40,6 @@ import threading
 from threading import _MainThread, Thread, Lock
 from ...handlers.lol.timer import timer_update
 from ...utils import get_addon_preferences, compatibility
-
 
 LOL_HOST_URL = "https://luxcorerender.org/lol"
 LOL_VERSION = "v2.5"
@@ -57,7 +56,7 @@ def load_local_TOC(context, asset_type):
     name = basename(dirname(dirname(dirname(__file__))))
     user_preferences = context.preferences.addons[name].preferences
 
-    filepath = join(user_preferences.global_dir, 'local_assets_' + asset_type.lower() + '.json')
+    filepath = join(user_preferences.global_dir, 'local_assets_' + asset_type + '.json')
     if isfile(filepath):
         with open(filepath) as file_handle:
             assets = json.loads(file_handle.read())
@@ -92,7 +91,6 @@ def load_patreon_assets(context):
                 if os.path.exists(filepath):
                     asset['locked'] = False
     else:
-        import urllib.request
         urlstr = LOL_HOST_URL + "/" + LOL_VERSION + "/assets_model_blendermarket.json"
         with urllib.request.urlopen(urlstr, timeout=60) as request:
             import json
@@ -117,7 +115,6 @@ def load_patreon_assets(context):
 
 
 def download_table_of_contents(context):
-    global bg_threads
     scene = context.scene
     ui_props = context.scene.luxcoreOL.ui
     name = basename(dirname(dirname(dirname(__file__))))
@@ -206,7 +203,6 @@ def download_table_of_contents(context):
 
         ui_props.ToC_loaded = True
         init_categories(context)
-
         bg_task = Thread(target=check_cache, args=(context, ))
         bg_threads.append(["check_cache", bg_task])
         bg_task.start()
@@ -218,6 +214,7 @@ def download_table_of_contents(context):
     except urllib.error.URLError as error:
         print("URL error: Could not download table of contents")
         print(error)
+
         return False
 
     finally:
@@ -261,7 +258,8 @@ def init_categories(context):
 
 def check_cache(args):
     (context) = args
-    global bg_threads
+    name = basename(dirname(dirname(dirname(__file__))))
+    user_preferences = context.preferences.addons[name].preferences
     global stop_check_cache
 
     user_preferences = get_addon_preferences(context)
@@ -276,6 +274,15 @@ def check_cache(args):
         if os.path.exists(filepath):
             if calc_hash(filepath) == asset["hash"]:
                 asset['downloaded'] = 100.0
+
+    # assets = scene.luxcoreOL.scene['assets']
+    # for asset in assets:
+    #     filename = asset["url"]
+    #     filepath = join(user_preferences.global_dir, "scene", splitext(filename)[0] + '.blend')
+    #
+    #     if os.path.exists(filepath):
+    #         if calc_hash(filepath) == asset["hash"]:
+    #             asset['downloaded'] = 100.0
 
     assets = scene.luxcoreOL.material['assets']
     for asset in assets:
@@ -310,6 +317,8 @@ def calc_hash(filename):
 def is_downloading(asset):
     global download_threads
     for thread_data in download_threads:
+        if thread_data[2].passargs['thumbnail']:
+            continue
         if asset['hash'] == thread_data[1]['hash']:
             return thread_data[2]
     return None
@@ -325,6 +334,7 @@ def download_file(asset_type, asset, location, rotation, target_object, target_s
     if tcom is None:
         tcom = ThreadCom()
         tcom.passargs['downloaders'] = [downloader]
+        tcom.passargs['thumbnail'] = False
         tcom.passargs['asset type'] = asset_type
         asset_data = asset.to_dict()
 
@@ -356,53 +366,107 @@ class Downloader(threading.Thread):
     def run(self):
         import urllib.request
         user_preferences = get_addon_preferences(bpy.context)
+
+        # print("Download Thread running")
         tcom = self.tcom
 
-        filename = self.asset["url"]
+        if tcom.passargs['thumbnail']:
+            # Thumbnail  download
+            if tcom.passargs['asset type'] == 'MATERIAL':
+                imagename = self.asset['name'].replace(" ", "_") + '.jpg'
+            else:
+                imagename = splitext(self.asset['url'])[0] + '.jpg'
 
-        with tempfile.TemporaryDirectory() as temp_dir_path:
-            temp_zip_path = os.path.join(temp_dir_path, filename)
-            url = LOL_HOST_URL + "/" + tcom.passargs['asset type'].lower() + "/" + filename
+            thumbnailpath = os.path.join(user_preferences.global_dir, tcom.passargs['asset type'].lower(), 'preview',
+                                         'full', imagename)
+            url = LOL_HOST_URL + "/" + tcom.passargs['asset type'].lower() + "/preview/" + imagename
             try:
-                print("Downloading:", url)
-                with urllib.request.urlopen(url, timeout=60) as url_handle, \
-                        open(temp_zip_path, "wb") as file_handle:
-                    total_length = url_handle.headers.get('Content-Length')
-                    tcom.file_size = int(total_length)
+                with urllib.request.urlopen(url, timeout=60) as url_handle, open(thumbnailpath, "wb") as file_handle:
+                    file_handle.write(url_handle.read())
 
-                    dl = 0
-                    data = url_handle.read(8192)
-                    file_handle.write(data)
-                    while len(data) == 8192:
-                        data = url_handle.read(8192)
-                        dl += len(data)
-                        tcom.downloaded = dl
-                        tcom.progress = int(100 * tcom.downloaded / tcom.file_size)
+                thumbnailpath_low = os.path.join(user_preferences.global_dir, tcom.passargs['asset type'].lower(),
+                                             'preview', imagename)
 
-                        # Stop download if Blender is closed
-                        for thread in threading.enumerate():
-                            if isinstance(thread, _MainThread):
-                                if not thread.is_alive():
-                                    self.stop()
+                from shutil import copyfile
+                copyfile(thumbnailpath, thumbnailpath_low)
 
-                        file_handle.write(data)
-                        if self.stopped():
-                            url_handle.close()
-                            return
-                print("Download finished")
-                import zipfile
-                with zipfile.ZipFile(temp_zip_path) as zf:
-                    print("Extracting zip to", os.path.join(user_preferences.global_dir, tcom.passargs['asset type'].lower()))
-                    zf.extractall(os.path.join(user_preferences.global_dir, tcom.passargs['asset type'].lower()))
+                img = bpy.data.images.load(thumbnailpath_low)
+                img.scale(128, 128)
+                img.save()
+                bpy.data.images.remove(img)
 
-            except TimeoutError as error:
-                print("TimeoutError error: Could not download " + filename)
+                self.asset['thumbnail'] = bpy.data.images.load(thumbnailpath_low)
+                self.asset['thumbnail'].name = '.LOL_preview'
+
+                img = self.asset['thumbnail']
+                if bpy.app.version < (2, 83, 0):
+                    # Needed in old Blender versions so the images are not too dark
+                    img.colorspace_settings.name = 'Linear'
+
+            except ConnectionError as error:
+                print("Connection error: Could not download " + imagename)
                 print(error)
-            except urllib.error.URLError as error:
-                print("Could not download: " + filename)
+            except TimeoutError as error:
+                print("TimeoutError error: Could not download " + imagename)
+                print(error)
+            except urllib.error.HTTPError as error:
+                print("HTTPError error: Could not download " + imagename)
+                print(error)
 
             finally:
                 tcom.finished = True
+                try:
+                    url_handle.close()
+                except NameError:
+                    pass
+        else:
+            #Asset download
+            filename = self.asset["url"]
+
+            with tempfile.TemporaryDirectory() as temp_dir_path:
+                temp_zip_path = os.path.join(temp_dir_path, filename)
+                url = LOL_HOST_URL + "/" + tcom.passargs['asset type'].lower() + "/" + filename
+                try:
+                    print("Downloading:", url)
+
+                    with urllib.request.urlopen(url, timeout=60) as url_handle, \
+                            open(temp_zip_path, "wb") as file_handle:
+                        total_length = url_handle.headers.get('Content-Length')
+                        tcom.file_size = int(total_length)
+
+                        dl = 0
+                        data = url_handle.read(8192)
+                        file_handle.write(data)
+                        while len(data) == 8192:
+                            data = url_handle.read(8192)
+                            dl += len(data)
+                            tcom.downloaded = dl
+                            tcom.progress = int(100 * tcom.downloaded / tcom.file_size)
+
+                            # Stop download if Blender is closed
+                            for thread in threading.enumerate():
+                                if isinstance(thread, _MainThread):
+                                    if not thread.is_alive():
+                                        self.stop()
+
+                            file_handle.write(data)
+                            if self.stopped():
+                                url_handle.close()
+                                return
+                    print("Download finished")
+                    import zipfile
+                    with zipfile.ZipFile(temp_zip_path) as zf:
+                        print("Extracting zip to", os.path.join(user_preferences.global_dir, tcom.passargs['asset type'].lower()))
+                        zf.extractall(os.path.join(user_preferences.global_dir, tcom.passargs['asset type'].lower()))
+
+                except TimeoutError as error:
+                    print("TimeoutError error: Could not download " + filename)
+                    print(error)
+                except urllib.error.URLError as error:
+                    print("Could not download: " + filename)
+
+                finally:
+                    tcom.finished = True
 
 
 class ThreadCom:  # object passed to threads to read background process stdout info
@@ -573,6 +637,24 @@ def get_scene_id():
     bpy.context.scene['uuid'] = bpy.context.scene.get('uuid', str(uuid.uuid4()))
     return bpy.context.scene['uuid']
 
+
+def download_thumbnail(self, context, asset):
+    ui_props = context.scene.luxcoreOL.ui
+
+    tcom = is_downloading(asset)
+    if tcom is None:
+        tcom = ThreadCom()
+        tcom.passargs['thumbnail'] = True
+        tcom.passargs['asset type'] = ui_props.asset_type
+
+        downloadthread = Downloader(asset, tcom)
+
+        download_threads.append([downloadthread, asset, tcom])
+        bpy.app.timers.register(timer_update)
+
+    return True
+
+
 def get_thumbnail(imagename):
     # Prepend a dot so the image is hidden to users, e.g. in Blender's search
     imagename_blender = '.' + imagename
@@ -605,18 +687,8 @@ def clean_previmg(fullsize=False):
 
 
 def load_previews(context, asset_type):
-    global bg_threads
-    bg_task = Thread(target=bg_load_previews, args=(context, asset_type))
-    bg_threads.append(["bg_load_previews", bg_task])
-    bg_task.start()
-
-
-def bg_load_previews(context, asset_type):
-    global bg_threads
-    from queue import Queue
-    download_queue = Queue()
-
-    user_preferences = get_addon_preferences(bpy.context)
+    name = basename(dirname(dirname(dirname(__file__))))
+    user_preferences = context.preferences.addons[name].preferences
 
     if asset_type == 'MODEL':
         assets = context.scene.luxcoreOL.model['assets']
@@ -626,41 +698,44 @@ def bg_load_previews(context, asset_type):
         assets = context.scene.luxcoreOL.material['assets']
 
     clean_previmg()
+    if assets is not None and len(assets) != 0:
+        for asset in assets:
+            if asset_type == 'MATERIAL':
+                imagename = asset['name'].replace(" ", "_") + '.jpg'
+            else:
+                imagename = splitext(asset['url'])[0] + '.jpg'
 
-    for asset in assets:
-        if asset_type == 'MATERIAL':
-            imagename = asset['name'].replace(" ", "_") + '.jpg'
-        else:
-            imagename = splitext(asset['url'])[0] + '.jpg'
+            tpath_full = join(user_preferences.global_dir, asset_type, 'preview', 'full', imagename)
+            tpath = join(user_preferences.global_dir, asset_type, 'preview', imagename)
 
-        tpath_full = join(user_preferences.global_dir, asset_type.lower(), 'preview', 'full', imagename)
-        tpath = join(user_preferences.global_dir, asset_type.lower(), 'preview', imagename)
-
-        if exists(tpath_full) and getsize(tpath_full) > 0 and \
-                exists(tpath) and getsize(tpath) > 0:
-            img = bpy.data.images.load(tpath)
-            img.name = '.LOL_preview'
-            asset["thumbnail"] = img
-
-            if bpy.app.version < (2, 83, 0):
-                # Needed in old Blender versions so the images are not too dark
-                img.colorspace_settings.name = 'Linear'
-        else:
-            if exists(tpath) and getsize(tpath) > 0:
-                print('Copy and downscale: ', imagename)
+            if os.path.exists(tpath_full) and os.path.getsize(tpath_full) > 0 and \
+                    os.path.exists(tpath) and os.path.getsize(tpath) > 0:
                 img = bpy.data.images.load(tpath)
-                if img.size == (128, 128):
-                    img.name = '.LOL_preview'
-                else:
-                    from shutil import copyfile
-                    copyfile(tpath, tpath_full)
-                    img = bpy.data.images.load(tpath)
-                    img.scale(128, 128)
-                    img.save()
-                    bpy.data.images.remove(img)
+                img.name = '.LOL_preview'
 
-                    asset['thumbnail'] = bpy.data.images.load(tpath)
-                    asset['thumbnail'].name = '.LOL_preview'
+                asset["thumbnail"] = img
+
+                if bpy.app.version < (2, 83, 0):
+                    # Needed in old Blender versions so the images are not too dark
+                    img.colorspace_settings.name = 'Linear'
+            else:
+                if os.path.exists(tpath) and os.path.getsize(tpath) > 0:
+                    print('Copy and downscale: ', imagename)
+                    img = bpy.data.images.load(tpath)
+                    if img.size == (128, 128):
+                        img.name = '.LOL_preview'
+                    else:
+                        from shutil import copyfile
+                        copyfile(tpath, tpath_full)
+                        img = bpy.data.images.load(tpath)
+                        img.scale(128, 128)
+                        img.save()
+                        bpy.data.images.remove(img)
+
+                        asset['thumbnail'] = bpy.data.images.load(tpath)
+                        asset['thumbnail'].name = '.LOL_preview'
+
+
 
                 rootdir = dirname(dirname(dirname(__file__)))
                 path = join(rootdir, 'thumbnails', 'thumbnail_notready.jpg')
@@ -672,57 +747,5 @@ def bg_load_previews(context, asset_type):
                     img.colorspace_settings.name = 'Linear'
 
                 asset["thumbnail"] = img
-            else:
-                download_queue.put((asset_type, imagename, asset))
-
-    bg_task = Thread(target=bg_download_thumbnails, args=(context, download_queue))
-    bg_threads.append(["bg_download_thumbnails", bg_task])
-    bg_task.start()
-
-    for threaddata in bg_threads:
-        tag, bg_task = threaddata
-        if tag == "bg_load_previews":
-            bg_threads.remove(threaddata)
-
-
-def bg_download_thumbnails(context, download_queue):
-    from requests import Session
-    session = Session()
-
-    name = basename(dirname(dirname(dirname(__file__))))
-    user_preferences = context.preferences.addons[name].preferences
-
-    while not download_queue.empty():
-        # Stop download if Blender is closed
-        for thread in threading.enumerate():
-            if isinstance(thread, _MainThread):
-                if not thread.is_alive():
-                    break
-
-        asset_type, imagename, asset = download_queue.get()
-
-        tpath_full = join(user_preferences.global_dir, asset_type.lower(), 'preview', 'full', imagename)
-        tpath = join(user_preferences.global_dir, asset_type.lower(), 'preview', imagename)
-
-        print("Downloading ", imagename)
-        url = LOL_HOST_URL + "/"+ asset_type.lower() +"/preview/" + imagename
-        with session.get(url) as resp, open(tpath, "wb") as file_handle:
-            if resp.status_code == 200:
-                file_handle.write(resp.content)
-
-                from shutil import copyfile
-                copyfile(tpath, tpath_full)
-                img = bpy.data.images.load(tpath)
-                img.scale(128, 128)
-                img.save()
-                bpy.data.images.remove(img)
-
-                asset['thumbnail'] = bpy.data.images.load(tpath)
-                asset['thumbnail'].name = '.LOL_preview'
-            else:
-                print("Download error ",resp.status_code, ": ", url)
-
-    for threaddata in bg_threads:
-        tag, bg_task = threaddata
-        if tag == "bg_download_thumbnails":
-            bg_threads.remove(threaddata)
+                if not asset['local']:
+                    download_thumbnail(None, context, asset)

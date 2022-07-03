@@ -54,7 +54,7 @@ def draw_panel_categories(self, context):
     op.do_search = False
     op.keep_running = True
 
-    for cat in categories.keys():
+    for cat in categories:
         col = layout.column(align=True)
         ctext = '%s (%i)' % (cat, categories[cat])
         op = col.operator('view3d.luxcore_ol_asset_bar', text=ctext)
@@ -228,6 +228,9 @@ class VIEW3D_PT_LUXCORE_ONLINE_LIBRARY_DOWNLOADS(Panel):
 
         for idx, threaddata in enumerate(utils.download_threads):
            tcom = threaddata[2]
+           if tcom.passargs['thumbnail']:
+               continue
+
            asset_data = threaddata[1]
 
            row = layout.row()
