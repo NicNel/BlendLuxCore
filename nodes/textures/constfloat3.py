@@ -113,6 +113,7 @@ class LuxCoreNodeTexConstfloat3(bpy.types.Node, LuxCoreNodeTexture):
         if colorspace == "opencolorio":
             ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
             definitions.update({
+                "value": list(linear_to_srgb(self.value)), #back to sRgb
                 "colorspace": colorspace,
                 "colorspace.config": ocio_path,
                 "colorspace.name": self.colorspace_name,
