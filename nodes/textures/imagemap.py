@@ -113,7 +113,7 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
                                     description="Interpolation",
                                     update=utils_node.force_viewport_update)
         
-    colorspace_name: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, description="colorspace")
+    colorspace_name: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, default=157, description="colorspace")
         
     def init(self, context):
         self.show_thumbnail = utils.get_addon_preferences(bpy.context).image_node_thumb_default
@@ -199,7 +199,7 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
         #color space
         colorspace = bpy.context.scene.luxcore.config.colorspace
         if colorspace == "opencolorio":
-            ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
+            ocio_path = utils.get_abspath(utils.COLORSPACE_CONF_PATH)
             definitions.update({
                 "colorspace": colorspace,
                 "colorspace.config": ocio_path,

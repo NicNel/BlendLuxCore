@@ -180,7 +180,7 @@ class LuxCoreSocketColor(bpy.types.NodeSocket, LuxCoreNodeSocket):
         colorspace = bpy.context.scene.luxcore.config.colorspace
         if colorspace == "opencolorio":
             color = list(self.linear_to_srgb(color)) #apply linear to srgb
-            ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
+            ocio_path = utils.get_abspath(utils.COLORSPACE_CONF_PATH)
             colorspace_name = bpy.context.scene.luxcore.config.colorspace_default_name
             return [colorspace, ocio_path, colorspace_name, *color]
         elif colorspace == "luxcore":

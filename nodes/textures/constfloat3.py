@@ -70,7 +70,7 @@ class LuxCoreNodeTexConstfloat3(bpy.types.Node, LuxCoreNodeTexture):
     ]
     input_mode: EnumProperty(name="Input Mode", items=input_mode_items, default="RGB")
     
-    colorspace_name: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, description="colorspace")
+    colorspace_name: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, default = 157, description="colorspace")
 
     def init(self, context):
         self.outputs.new("LuxCoreSocketColor", "Color")
@@ -111,7 +111,7 @@ class LuxCoreNodeTexConstfloat3(bpy.types.Node, LuxCoreNodeTexture):
         #color space
         colorspace = bpy.context.scene.luxcore.config.colorspace
         if colorspace == "opencolorio":
-            ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
+            ocio_path = utils.get_abspath(utils.COLORSPACE_CONF_PATH)
             definitions.update({
                 "value": list(linear_to_srgb(self.value)), #back to sRgb
                 "colorspace": colorspace,
