@@ -418,12 +418,12 @@ class LuxCoreConfig(PropertyGroup):
     def Update_Items(self, context):
         ocio_path = utils.get_abspath(self.ocio_conf_path)
         utils.COLORSPACE_NAMES = utils.getCsNamesFromConf(ocio_path)
-        #print(utils.COLORSPACE_NAMES)
+        utils.COLORSPACE_CONF_PATH = ocio_path
         
     colorspace: EnumProperty(name="Colorspace", items=colorspace_items, default="nop")
     colorspace_gamma: FloatProperty(name="Gamma", default=2.2, min=0, description="Colorspace gamma")
     ocio_conf_path: StringProperty(name="Ocio path", subtype="FILE_PATH", description="Path to config.ocio folder", update = Update_Items)
-    colorspace_default_name: EnumProperty(name="Default", items=utils.colorspace_items_generator, description="Colorspace default name")
+    colorspace_default_name: EnumProperty(name="Default", items=utils.colorspace_items_generator, default=157, description="Colorspace default name")
 
     # These settings are mostly not directly transferrable to LuxCore properties
     # They need some if/else decisions and aggregation, e.g. to build the engine name from parts
