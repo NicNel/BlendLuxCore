@@ -88,7 +88,11 @@ def register():
     properties.register()
     ui.register()
     nodes.register()
-
+    
+    #init default path to config.ocio file
+    from .utils import init_default_ocio_file
+    init_default_ocio_file()
+    
     from .utils.log import LuxCoreLog
     pyluxcore.Init(LuxCoreLog.add)
     version_string = f'{bl_info["version"][0]}.{bl_info["version"][1]}{bl_info["warning"]}'
