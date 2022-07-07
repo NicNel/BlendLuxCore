@@ -12,14 +12,18 @@ MESH_OBJECTS = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
 EXPORTABLE_OBJECTS = MESH_OBJECTS | {"LIGHT"}
 NON_DEFORMING_MODIFIERS = {"COLLISION", "PARTICLE_INSTANCE", "PARTICLE_SYSTEM", "SMOKE"}
 
+#COLORSPACE
 COLORSPACE_NAMES = []#store readed ocio profiles names
-#generate dinamic list for enum property
+COLORSPACE_CONF_PATH = ""
+
+#generate dynamic list for enum property
 #https://blenderartists.org/t/add-remove-enumproperty-items/1305166/8
 def colorspace_items_generator(self,context):
     enum_items = []
     for name in COLORSPACE_NAMES:
         enum_items.append((name, name, name))
     return enum_items
+    
 #read names from config.ocio
 def getCsNamesFromConf(ocio_file):
     lut_names = []
@@ -34,7 +38,28 @@ def getCsNamesFromConf(ocio_file):
     finally:
         f.close()
     return lut_names
-
+    
+def get_blender_config_ocio_file():
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    #an elegant solution is here:
+    parent = os.path.dirname(current_dir)
+    parent = os.path.dirname(parent)
+    parent = os.path.dirname(parent)
+    parent = os.path.dirname(parent)
+    datafiles = os.path.join(parent, "datafiles")
+    colormanagement = os.path.join(datafiles, "colormanagement")
+    config = os.path.join(colormanagement, "config.ocio")
+    print("DEFAULT CONFIG.OCIO FILE:",config)
+    return config
+    
+def init_default_ocio_file():
+    global COLORSPACE_NAMES
+    global COLORSPACE_CONF_PATH
+    ocio_path = get_blender_config_ocio_file()
+    COLORSPACE_NAMES = getCsNamesFromConf(ocio_path)
+    COLORSPACE_CONF_PATH = ocio_path
+#COLORSPACE
+    
 def sanitize_luxcore_name(string):
     """
     Do NOT use this function to create a luxcore name for an object/material/etc.!
@@ -666,8 +691,7 @@ def is_valid_camera(obj):
 def get_blendfile_name():
     basename = bpy.path.basename(bpy.data.filepath)
     return os.path.splitext(basename)[0]  # remove ".blend"
-
-
+    
 def get_persistent_cache_file_path(file_path, save_or_overwrite, is_viewport_render, scene):
     file_path_abs = get_abspath(file_path, library=scene.library)
 
