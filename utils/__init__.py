@@ -56,8 +56,11 @@ def init_default_ocio_file():
     global COLORSPACE_NAMES
     global COLORSPACE_CONF_PATH
     ocio_path = get_blender_config_ocio_file()
-    COLORSPACE_NAMES = getCsNamesFromConf(ocio_path)
-    COLORSPACE_CONF_PATH = ocio_path
+    if os.path.exists(ocio_path):
+        COLORSPACE_NAMES = getCsNamesFromConf(ocio_path)
+        COLORSPACE_CONF_PATH = ocio_path
+    else:
+        print("DEFAULT CONFIG.OCIO FILE NOT FOUND",ocio_path)
 #COLORSPACE
     
 def sanitize_luxcore_name(string):
