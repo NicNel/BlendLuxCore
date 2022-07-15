@@ -6,6 +6,9 @@ from ..utils import matrix_to_list
 from ..utils.errorlog import LuxCoreErrorLog
 from ..ui import icons
 
+import math
+from .. import utils
+
 # The rules for socket classes are these:
 # - If it is a socket that's used by more than one node, put it in this file
 # - If it is only used by one node, put it in the file of that node
@@ -162,9 +165,30 @@ class LuxCoreSocketColor(bpy.types.NodeSocket, LuxCoreNodeSocket):
         split = layout.split(factor=0.7)
         split.label(text=text)
         split.prop(self, "default_value", text="")
+    
+    def channel_linear_to_srgb(self, channel):
+        if channel < 0.0031308:
+            return 0.0 if channel < 0.0 else channel * 12.92
+        else:
+            return 1.055 * math.pow(channel, 1.0 / 2.4) - 0.055
+
+    def linear_to_srgb(self, color):
+        return mathutils.Color([self.channel_linear_to_srgb(c) for c in color])
 
     def export_default(self):
-        return list(self.default_value)
+        color = list(self.default_value)
+        #color space
+        colorspace = bpy.context.scene.luxcore.config.colorspace
+        if colorspace == "opencolorio":
+            color = list(self.linear_to_srgb(color)) #apply linear to srgb
+            ocio_path = utils.get_abspath(utils.COLORSPACE_CONF_PATH)
+            colorspace_name = bpy.context.scene.luxcore.config.colorspace_default_name
+            return [colorspace, ocio_path, colorspace_name, *color]
+        elif colorspace == "luxcore":
+            colorspace_gamma = bpy.context.scene.luxcore.config.colorspace_gamma
+            return [colorspace, colorspace_gamma, *color]
+        #------------------
+        return color
 
 
 # Base class for float sockets (can't be used directly)

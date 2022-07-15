@@ -161,6 +161,12 @@ class LUXCORE_WORLD_PT_infinite(WorldButtonsPanel, Panel):
 
         sub = layout.column(align=True)
         sub.enabled = world.luxcore.image is not None
+        
+        # Colorspace
+        config = context.scene.luxcore.config
+        if config.colorspace == "opencolorio":
+            sub.prop(world.luxcore, "HDRI_colorspace")
+            
         sub.prop(world.luxcore, "gamma")
         world.luxcore.image_user.draw(sub, context.scene)
         sub.prop(world.luxcore, "rotation")

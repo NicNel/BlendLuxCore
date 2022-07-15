@@ -88,6 +88,10 @@ def register():
     properties.register()
     ui.register()
     nodes.register()
+    
+    #init default path to config.ocio file
+    from .utils import init_default_ocio_file
+    init_default_ocio_file()
 
     from .utils.log import LuxCoreLog
     pyluxcore.Init(LuxCoreLog.add)

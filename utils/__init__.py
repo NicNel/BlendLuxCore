@@ -12,6 +12,56 @@ MESH_OBJECTS = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
 EXPORTABLE_OBJECTS = MESH_OBJECTS | {"LIGHT"}
 NON_DEFORMING_MODIFIERS = {"COLLISION", "PARTICLE_INSTANCE", "PARTICLE_SYSTEM", "SMOKE"}
 
+#COLORSPACE
+COLORSPACE_NAMES = []#store readed ocio profiles names
+COLORSPACE_CONF_PATH = ""
+
+#generate dynamic list for enum property
+#https://blenderartists.org/t/add-remove-enumproperty-items/1305166/8
+def colorspace_items_generator(self,context):
+    enum_items = []
+    for name in COLORSPACE_NAMES:
+        enum_items.append((name, name, name))
+    return enum_items
+    
+#read names from config.ocio
+def getCsNamesFromConf(ocio_file):
+    lut_names = []
+    try:
+        f = open(ocio_file, mode='r')
+        for line in f:
+            if "name:" in line:
+                x = re.findall("\sname:", line)
+                if not x==[]:
+                    name = line.split(":")[1].strip()
+                    lut_names.append(name)
+    finally:
+        f.close()
+    return lut_names
+    
+def get_blender_config_ocio_file():
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    #an elegant solution is here:
+    parent = os.path.dirname(current_dir)
+    parent = os.path.dirname(parent)
+    parent = os.path.dirname(parent)
+    parent = os.path.dirname(parent)
+    datafiles = os.path.join(parent, "datafiles")
+    colormanagement = os.path.join(datafiles, "colormanagement")
+    config = os.path.join(colormanagement, "config.ocio")
+    print("DEFAULT CONFIG.OCIO FILE:",config)
+    return config
+    
+def init_default_ocio_file():
+    global COLORSPACE_NAMES
+    global COLORSPACE_CONF_PATH
+    ocio_path = get_blender_config_ocio_file()
+    if os.path.exists(ocio_path):
+        COLORSPACE_NAMES = getCsNamesFromConf(ocio_path)
+        COLORSPACE_CONF_PATH = ocio_path
+    else:
+        print("DEFAULT CONFIG.OCIO FILE NOT FOUND",ocio_path)
+#COLORSPACE
 
 def sanitize_luxcore_name(string):
     """
@@ -410,7 +460,7 @@ def get_abspath(path, library=None, must_exist=False, must_be_existing_file=Fals
 
 def absorption_at_depth_scaled(abs_col, depth, scale=1):
     assert depth > 0
-    abs_col = list(abs_col)
+    abs_col = list(abs_col)[-3:]
     assert len(abs_col) == 3
 
     scaled = [0, 0, 0]

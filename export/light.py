@@ -610,6 +610,15 @@ def _convert_infinite(definitions, light_or_world, scene, transformation=None):
     definitions["gamma"] = light_or_world.luxcore.gamma
     definitions["sampleupperhemisphereonly"] = light_or_world.luxcore.sampleupperhemisphereonly
 
+    #colorspace
+    colorspace = bpy.context.scene.luxcore.config.colorspace
+    if colorspace == "opencolorio":
+        colorspace_name = light_or_world.luxcore.HDRI_colorspace
+        ocio_path = utils.get_abspath(utils.COLORSPACE_CONF_PATH)
+        definitions["colorspace"] = colorspace
+        definitions["colorspace.config"] = ocio_path
+        definitions["colorspace.name"] = colorspace_name
+
     if transformation:
         infinite_fix = Matrix.Scale(1.0, 4)
         # TODO one axis still not correct

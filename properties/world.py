@@ -1,4 +1,6 @@
 import bpy
+from .. import utils
+
 from bpy.props import (
     PointerProperty, EnumProperty, FloatProperty,
     FloatVectorProperty, IntProperty, BoolProperty,
@@ -42,6 +44,9 @@ GROUND_COLOR_DESC = GROUND_ENABLE_DESC
 
 
 class LuxCoreWorldProps(bpy.types.PropertyGroup):
+    #colorspace
+    HDRI_colorspace: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, default=151, description="Colorspace name")
+
     use_cycles_settings: BoolProperty(name="Use Cycles Settings", default=False)
 
     lights = [

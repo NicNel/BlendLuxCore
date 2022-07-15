@@ -19,6 +19,7 @@ NORMAL_MAP_DESC = (
 )
 NORMAL_SCALE_DESC = "Height multiplier, used to adjust the baked-in height of the normal map"
 
+
 class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
     bl_label = "Imagemap"
     bl_width_default = 200
@@ -44,7 +45,6 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
         ("alpha", "Alpha", "Use only the alpha channel", 5),
         ("mean", "Mean (Average)", "Greyscale", 6),
         ("colored_mean", "Mean (Luminance)", "Greyscale", 7),
-        
     ]
     channel: EnumProperty(update=utils_node.force_viewport_update, name="Channel", 
                           items=channel_items, default="default", description="Channel")
@@ -112,17 +112,18 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
     filter: EnumProperty(name="Interpolation", items=filter_items, default="linear",
                                     description="Interpolation",
                                     update=utils_node.force_viewport_update)
-        
-    colorspace_name: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, description="colorspace")
-        
+
+    colorspace_name: EnumProperty(name="Colorspace", items=utils.colorspace_items_generator, default=157, description="colorspace")
+    
     def init(self, context):
         self.show_thumbnail = utils.get_addon_preferences(bpy.context).image_node_thumb_default
+
         self.add_input("LuxCoreSocketMapping2D", "2D Mapping")
+
         self.outputs.new("LuxCoreSocketColor", "Color")
         self.outputs.new("LuxCoreSocketFloatUnbounded", "Alpha")
         self.outputs.new("LuxCoreSocketBump", "Bump")
         self.outputs["Bump"].enabled = False
-        #print(utils.COLORSPACE_NAMES)
 
     def draw_label(self):
         if self.image:
@@ -152,7 +153,6 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
             col.prop(self, "channel", text="")
 
         col.prop(self, "filter", text="")
-        
         col.prop(self, "projection", text="")
         col.prop(self, "wrap", text="")
         if self.wrap == "repeat":
@@ -188,6 +188,7 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
             msg = 'Node "%s" in tree "%s": %s' % (self.name, self.id_data.name, error)
             LuxCoreErrorLog.add_warning(msg)
             return [1, 0, 1]
+
         definitions = {
             "type": "imagemap",
             "file": filepath,
@@ -199,7 +200,7 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
         #color space
         colorspace = bpy.context.scene.luxcore.config.colorspace
         if colorspace == "opencolorio":
-            ocio_path = utils.get_abspath(bpy.context.scene.luxcore.config.ocio_conf_path)
+            ocio_path = utils.get_abspath(utils.COLORSPACE_CONF_PATH)
             definitions.update({
                 "colorspace": colorspace,
                 "colorspace.config": ocio_path,
@@ -212,7 +213,6 @@ class LuxCoreNodeTexImagemap(bpy.types.Node, LuxCoreNodeTexture):
                 "colorspace.gamma": colorspace_gamma,
             })
         #------------------
-        
         
         definitions.update(self.inputs["2D Mapping"].export(exporter, depsgraph, props))
 
